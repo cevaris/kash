@@ -5,10 +5,13 @@ import (
 )
 
 type MapCache struct {
-	data            map[interface{}]*element
-	ttl             time.Duration
-	loader          func(interface{}) interface{}
-	refreshInterval time.Duration
+	data                 map[interface{}]*element
+	intervalCacheRefresh time.Duration
+	loadFunc             func(interface{}) interface{}
+	refreshInterval      time.Duration
+	refreshFunc          func(key interface{}, prev interface{}) interface{}
+	ttlAccessed          time.Duration
+	ttlWrite             time.Duration
 }
 
 func NewMapCache() *MapCache {
@@ -18,15 +21,16 @@ func NewMapCache() *MapCache {
 
 	c := &MapCache{
 		data: make(map[interface{}]*element),
-		ttl: MaxDuration,
-		loader: nilSliceLoader,
-		refreshInterval: time.Second,
+		intervalCacheRefresh: MaxDuration,
+		ttlWrite: MaxDuration,
+		loadFunc: nilSliceLoader,
+		ttlAccessed: MaxDuration,
 	}
 	return c
 }
 
 func (c *MapCache) SetLoader(keyLoader func(interface{}) interface{}) {
-	c.loader = keyLoader
+	c.loadFunc = keyLoader
 }
 
 func (c *MapCache) Get(key interface{}) (interface{}, bool) {
@@ -51,12 +55,25 @@ func (c *MapCache) PutAll(values map[interface{}]interface{}) {
 	}
 }
 
+func (c *MapCache) RefreshAfterWrite(ttl time.Duration) {
+	c.intervalCacheRefresh = ttl
+}
+
+func (c *MapCache) ExpireAfterAccess(ttl time.Duration) {
+	c.ttlAccessed = ttl
+}
+
+func (c *MapCache) ExpireAfterWrite(ttl time.Duration) {
+	c.ttlWrite = ttl
+}
+
 func (c *MapCache) Len() int {
 	return len(c.data)
 }
 
 func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
-	if value, exists := c.data[key]; exists && !value.Stale(now, c.ttl) {
+	if value, exists := c.data[key]; exists && !value.WriteStale(now, c.ttlWrite) {
+		defer c.updateAccessTime(key, now)
 		return value.Value, true
 	}
 
@@ -64,6 +81,7 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 	c.sync(key)
 
 	if value, exists := c.data[key]; exists {
+		defer c.updateAccessTime(key, now)
 		return value.Value, true
 	} else {
 		return nil, false
@@ -71,19 +89,31 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 }
 
 func (c *MapCache) getIfPresent(key interface{}, now time.Time) (interface{}, bool) {
-	if value, exists := c.data[key]; exists && !value.Stale(now, c.ttl) {
+	if value, exists := c.data[key]; exists && !value.WriteStale(now, c.ttlWrite) {
 		return value.Value, true
 	} else {
 		return nil, false
 	}
 }
 
-func (c *MapCache) RefreshAfterWrite(ttl time.Duration) {
-	c.ttl = ttl
-}
+//func (c *MapCache) launchCacheRefresher() {
+//	go func() {
+//		for range time.Tick(c.refreshInterval) {
+//			now := time.Now().UTC()
+//			c.refreshKeys(now)
+//		}
+//	}()
+//}
 
 func (c *MapCache) sync(key interface{}) {
-	if value := c.loader(key); value != nil {
+	if value := c.loadFunc(key); value != nil {
 		c.data[key] = newElement(value)
+	}
+}
+
+func (c *MapCache) updateAccessTime(key interface{}, now time.Time) {
+	if value, exists := c.data[key]; exists {
+		value.AccessedAt = now
+		c.data[key] = value
 	}
 }
