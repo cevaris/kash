@@ -74,6 +74,22 @@ func TestMapCachePutAll(t *testing.T) {
 	}
 }
 
+func TestMapCacheInvalidate(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1, "b": 2}
+	mapCache := NewMapCache()
+	mapCache.PutAll(testMap)
+
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+	mapCache.Invalidate("a")
+
+	if actual, exists := mapCache.Get("a"); exists || actual != nil {
+		t.Error("not nil", actual, exists)
+	}
+}
+
 func staticMapLoader(value interface{}) func(interface{}) interface{} {
 	return func(interface{}) interface{} {
 		return value

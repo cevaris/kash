@@ -33,6 +33,10 @@ func (c *MapCache) Get(key interface{}) (interface{}, bool) {
 	return c.get(key, time.Now().UTC())
 }
 
+func (c *MapCache) Invalidate(key interface{}) {
+	delete(c.data, key)
+}
+
 func (c *MapCache) Put(key interface{}, value interface{}) {
 	c.data[key] = newElement(value)
 }
