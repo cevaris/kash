@@ -22,7 +22,6 @@ func NewMapCache() *MapCache {
 		loader: nilSliceLoader,
 		refreshInterval: time.Second,
 	}
-	c.launchLoader()
 	return c
 }
 
@@ -31,18 +30,22 @@ func (c *MapCache) SetLoader(keyLoader func(interface{}) interface{}) {
 }
 
 func (c *MapCache) Get(key interface{}) (interface{}, bool) {
-	if value, ok := c.data[key]; ok {
+	return c.get(key, time.Now().UTC())
+}
+
+func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
+	if value, exists := c.data[key]; exists && !value.Stale(now, c.ttl) {
 		return value.Value, true
 	}
 
-	// Cache miss, fetch new value for key
+	// Cache miss or data older than ttl
 	c.sync(key)
 
-	if value, ok := c.data[key]; ok {
+	if value, exists := c.data[key]; exists {
 		return value.Value, true
+	} else {
+		return nil, false
 	}
-
-	return nil, false
 }
 
 func (c *MapCache) RefreshAfterWrite(ttl time.Duration) {
@@ -61,14 +64,4 @@ func (c *MapCache) sync(key interface{}) {
 	if value := c.loader(key); value != nil {
 		c.data[key] = NewElement(value)
 	}
-}
-
-func (c *MapCache) launchLoader() {
-	// should only launch once
-	go func() {
-		for range time.Tick(c.refreshInterval) {
-			now := time.Now().UTC()
-			c.refreshKeys(now)
-		}
-	}()
 }

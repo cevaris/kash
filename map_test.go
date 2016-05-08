@@ -9,8 +9,8 @@ func TestNewMapCache(t *testing.T) {
 	testValue := 10
 	mapCache := NewMapCache()
 	mapCache.SetLoader(staticMapLoader(testValue))
-	if actual, ok := mapCache.Get("test"); !ok || actual != testValue {
-		t.Error("invalide cache data", actual, ok)
+	if actual, exists := mapCache.Get("test"); !exists || actual != testValue {
+		t.Error("invalid cache data", actual, exists)
 	}
 }
 
@@ -26,20 +26,20 @@ func TestMapCacheKeyLoader(t *testing.T) {
 		},
 	))
 
-	if actual, ok := mapCache.Get("test"); ok || actual != nil {
-		t.Error("not nil", actual, ok)
+	if actual, exists := mapCache.Get("test"); exists || actual != nil {
+		t.Error("not nil", actual, exists)
 	}
 
 	mapCache.sync("test")
 
-	if actual, ok := mapCache.Get("test"); !ok || actual != testValueA {
-		t.Error("invalide cache data", actual, ok)
+	if actual, exists := mapCache.Get("test"); !exists || actual != testValueA {
+		t.Error("invalid cache data", actual, exists)
 	}
 
 	mapCache.sync("test")
 
-	if actual, ok := mapCache.Get("test"); !ok || actual != testValueB {
-		t.Error("invalide cache data", actual)
+	if actual, exists := mapCache.Get("test"); !exists || actual != testValueB {
+		t.Error("invalid cache data", actual)
 	}
 }
 

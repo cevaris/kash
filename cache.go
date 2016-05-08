@@ -24,6 +24,10 @@ func NewElement(value interface{}) *Element {
 	}
 }
 
+func (e *Element) Stale(now time.Time, ttl time.Duration) bool {
+	return e.CreatedAt.Before(now.Add(-1 * ttl))
+}
+
 func (e *Element) String() string {
 	return fmt.Sprintf("%+v %+v", e.Value, e.CreatedAt)
 }
