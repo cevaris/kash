@@ -2,12 +2,10 @@ package gache
 
 type Cache interface{}
 
-type Element struct{}
-type Integer struct {
-	Element
-	Value int
+type Element struct {
+	Value interface{}
 }
-type String struct {
-	Element
-	Value int
+
+func NewElement(value interface{}) *Element {
+	return &Element{Value: value}
 }
