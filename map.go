@@ -47,6 +47,10 @@ func (c *MapCache) PutAll(values map[interface{}]interface{}) {
 	}
 }
 
+func (c *MapCache) Len() int {
+	return len(c.data)
+}
+
 func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 	if value, exists := c.data[key]; exists && !value.Stale(now, c.ttl) {
 		return value.Value, true

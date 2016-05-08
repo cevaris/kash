@@ -43,6 +43,37 @@ func TestMapCacheKeyLoader(t *testing.T) {
 	}
 }
 
+func TestMapCacheInvalidate(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1, "b": 2}
+	mapCache := NewMapCache()
+	mapCache.PutAll(testMap)
+
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+	mapCache.Invalidate("a")
+
+	if actual, exists := mapCache.Get("a"); exists || actual != nil {
+		t.Error("not nil", actual, exists)
+	}
+}
+
+func TestMapCacheLen(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1, "b": 2}
+	mapCache := NewMapCache()
+
+	if actual := mapCache.Len(); actual != 0 {
+		t.Error("invalid cache len", actual)
+	}
+
+	mapCache.PutAll(testMap)
+
+	if actual := mapCache.Len(); actual != len(testMap) {
+		t.Error("invalid cache len", actual)
+	}
+}
+
 func TestMapCachePut(t *testing.T) {
 	testKey := "test"
 	testValue := 10
@@ -71,22 +102,6 @@ func TestMapCachePutAll(t *testing.T) {
 
 	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
 		t.Error("invalid cache data", actual, exists)
-	}
-}
-
-func TestMapCacheInvalidate(t *testing.T) {
-	testMap := map[interface{}]interface{}{"a": 1, "b": 2}
-	mapCache := NewMapCache()
-	mapCache.PutAll(testMap)
-
-	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
-		t.Error("invalid cache data", actual, exists)
-	}
-
-	mapCache.Invalidate("a")
-
-	if actual, exists := mapCache.Get("a"); exists || actual != nil {
-		t.Error("not nil", actual, exists)
 	}
 }
 
