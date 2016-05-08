@@ -1,4 +1,4 @@
-package gache
+package kash
 
 import (
 	"testing"
@@ -62,7 +62,7 @@ func mapKeyLoaderIter(values []map[interface{}]interface{}) func(interface{}) in
 	}
 }
 
-func dumpMap(s map[interface{}]*Element) {
+func dumpMap(s map[interface{}]*element) {
 	builder := make([]string, len(s))
 
 	var i = 0

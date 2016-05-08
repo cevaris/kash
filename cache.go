@@ -1,4 +1,4 @@
-package gache
+package kash
 
 import (
 	"time"
@@ -12,26 +12,26 @@ const MaxDuration = time.Nanosecond * math.MaxInt64
 
 type Cache interface{}
 
-type Element struct {
+type element struct {
 	Value     interface{}
 	CreatedAt time.Time
 }
 
-func NewElement(value interface{}) *Element {
-	return &Element{
+func newElement(value interface{}) *element {
+	return &element{
 		Value: value,
 		CreatedAt: time.Now().UTC(),
 	}
 }
 
-func (e *Element) Stale(now time.Time, ttl time.Duration) bool {
+func (e *element) Stale(now time.Time, ttl time.Duration) bool {
 	return e.CreatedAt.Before(now.Add(-1 * ttl))
 }
 
-func (e *Element) String() string {
+func (e *element) String() string {
 	return fmt.Sprintf("%+v %+v", e.Value, e.CreatedAt)
 }
 
-func (e1 *Element) Compare(e2 *Element) bool {
+func (e1 *element) Compare(e2 *element) bool {
 	return e1.Value == e2.Value
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	cache "github.com/cevaris/gache"
+	cache "github.com/cevaris/kash"
 	"time"
 	"fmt"
 )

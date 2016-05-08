@@ -1,56 +1,56 @@
 package main
 
 import (
-	cache "github.com/cevaris/gache"
+	cache "github.com/cevaris/kash"
 	"time"
 	"fmt"
 )
 
 func sliceCacheStatic() {
-	fmt.Println("exampleStaticCache")
+	fmt.Println("sliceCacheStatic")
 	sliceCache := cache.NewSliceCache()
-	sliceCache.SetLoader(func() []*cache.Element {
-		return []*cache.Element{
-			cache.NewElement(time.Now().UTC()),
-			cache.NewElement(time.Now().UTC().Add(-5 * time.Second)),
+	sliceCache.SetLoader(func() []interface{} {
+		return []interface{}{
+			time.Now().UTC(),
+			time.Now().UTC().Add(-5 * time.Second),
 		}
 	})
 
 	var slice = sliceCache.Get()
 	for i, e := range slice {
-		fmt.Println(i, e.Value.(time.Time))
+		fmt.Println(i, e.(time.Time))
 	}
 
 	time.Sleep(1 * time.Second)
 
 	slice = sliceCache.Get()
 	for i, e := range slice {
-		fmt.Println(i, e.Value.(time.Time))
+		fmt.Println(i, e.(time.Time))
 	}
 	fmt.Println("\n")
 }
 
 func sliceCacheWithRefresh() {
-	fmt.Println("exampleLoaderWithRefresh")
+	fmt.Println("sliceCacheWithRefresh")
 	sliceCache := cache.NewSliceCache()
 	sliceCache.RefreshAfterWrite(100 * time.Millisecond)
-	sliceCache.SetLoader(func() []*cache.Element {
-		return []*cache.Element{
-			cache.NewElement(time.Now().UTC()),
-			cache.NewElement(time.Now().UTC().Add(-5 * time.Second)),
+	sliceCache.SetLoader(func() []interface{} {
+		return []interface{}{
+			time.Now().UTC(),
+			time.Now().UTC().Add(-5 * time.Second),
 		}
 	})
 
 	var slice = sliceCache.Get()
 	for i, e := range slice {
-		fmt.Println(i, e.Value.(time.Time))
+		fmt.Println(i, e.(time.Time))
 	}
 
 	time.Sleep(1 * time.Second)
 
 	slice = sliceCache.Get()
 	for i, e := range slice {
-		fmt.Println(i, e.Value.(time.Time))
+		fmt.Println(i, e.(time.Time))
 	}
 	fmt.Println("\n")
 }

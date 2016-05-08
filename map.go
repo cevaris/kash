@@ -1,11 +1,11 @@
-package gache
+package kash
 
 import (
 	"time"
 )
 
 type MapCache struct {
-	data            map[interface{}]*Element
+	data            map[interface{}]*element
 	ttl             time.Duration
 	loader          func(interface{}) interface{}
 	refreshInterval time.Duration
@@ -17,7 +17,7 @@ func NewMapCache() *MapCache {
 	}
 
 	c := &MapCache{
-		data: make(map[interface{}]*Element),
+		data: make(map[interface{}]*element),
 		ttl: MaxDuration,
 		loader: nilSliceLoader,
 		refreshInterval: time.Second,
@@ -62,6 +62,6 @@ func (c *MapCache) refreshKeys(now time.Time) {
 
 func (c *MapCache) sync(key interface{}) {
 	if value := c.loader(key); value != nil {
-		c.data[key] = NewElement(value)
+		c.data[key] = newElement(value)
 	}
 }

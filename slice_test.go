@@ -1,4 +1,4 @@
-package gache
+package kash
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ type TestObject struct{}
 
 func TestNewSliceCache(t *testing.T) {
 	sliceCache := NewSliceCache()
-	sliceCache.SetLoader(buildSliceLoader(make([]*Element, TestCacheSize)))
+	sliceCache.SetLoader(buildSliceLoader(make([]interface{}, TestCacheSize)))
 
 	actualLen := len(sliceCache.Get())
 	if len(sliceCache.Get()) != TestCacheSize {
@@ -30,7 +30,7 @@ func TestNilSliceCacheLoader(t *testing.T) {
 }
 
 func TestSliceCacheInt(t *testing.T) {
-	testData := []*Element{NewElement(10), NewElement(100)}
+	testData := []interface{}{newElement(10), newElement(100)}
 	sliceCache := NewSliceCache()
 	sliceCache.SetLoader(buildSliceLoader(testData))
 
@@ -40,7 +40,7 @@ func TestSliceCacheInt(t *testing.T) {
 }
 
 func TestSliceCacheString(t *testing.T) {
-	testData := []*Element{NewElement("alpha"), NewElement("bravo")}
+	testData := []interface{}{newElement("alpha"), newElement("bravo")}
 	sliceCache := NewSliceCache()
 	sliceCache.SetLoader(buildSliceLoader(testData))
 
@@ -50,7 +50,7 @@ func TestSliceCacheString(t *testing.T) {
 }
 
 func TestSliceCacheGenericInterface(t *testing.T) {
-	testData := []*Element{NewElement(&TestObject{}), NewElement(&TestObject{})}
+	testData := []interface{}{newElement(&TestObject{}), newElement(&TestObject{})}
 	sliceCache := NewSliceCache()
 	sliceCache.SetLoader(buildSliceLoader(testData))
 
@@ -60,10 +60,10 @@ func TestSliceCacheGenericInterface(t *testing.T) {
 }
 
 func TestSliceCacheLoader(t *testing.T) {
-	testData := [][]*Element{
-		[]*Element{NewElement("alpha"), NewElement("bravo")},
-		[]*Element{NewElement("charile"), NewElement("delta")},
-		[]*Element{NewElement("echo"), NewElement("foxtrot")},
+	testData := [][]interface{}{
+		[]interface{}{newElement("alpha"), newElement("bravo")},
+		[]interface{}{newElement("charile"), newElement("delta")},
+		[]interface{}{newElement("echo"), newElement("foxtrot")},
 	}
 
 	sliceCache := NewSliceCache()
@@ -86,15 +86,15 @@ func TestSliceCacheLoader(t *testing.T) {
 	}
 }
 
-func buildSliceLoader(values []*Element) func() []*Element {
-	return func() []*Element {
+func buildSliceLoader(values []interface{}) func() []interface{} {
+	return func() []interface{} {
 		return values
 	}
 }
 
-func buildSliceLoaderIter(values [][]*Element) func() []*Element {
+func buildSliceLoaderIter(values [][]interface{}) func() []interface{} {
 	var i = 0
-	return func() []*Element {
+	return func() []interface{} {
 		for i < len(values) {
 			p := i
 			i = i + 1
@@ -104,7 +104,7 @@ func buildSliceLoaderIter(values [][]*Element) func() []*Element {
 	}
 }
 
-func dumpSlice(s []*Element) {
+func dumpSlice(s []interface{}) {
 	builder := make([]string, len(s))
 
 	for i, v := range s {
