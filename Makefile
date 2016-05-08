@@ -6,5 +6,5 @@ build:
 install:
 	go install
 
-test:
+test: build install
 	go test -v *.go
