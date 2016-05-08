@@ -33,6 +33,10 @@ func (c *MapCache) Get(key interface{}) (interface{}, bool) {
 	return c.get(key, time.Now().UTC())
 }
 
+func (c *MapCache) GetIfPresent(key interface{}) (interface{}, bool) {
+	return c.getIfPresent(key, time.Now().UTC())
+}
+
 func (c *MapCache) Invalidate(key interface{}) {
 	delete(c.data, key)
 }
@@ -60,6 +64,14 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 	c.sync(key)
 
 	if value, exists := c.data[key]; exists {
+		return value.Value, true
+	} else {
+		return nil, false
+	}
+}
+
+func (c *MapCache) getIfPresent(key interface{}, now time.Time) (interface{}, bool) {
+	if value, exists := c.data[key]; exists && !value.Stale(now, c.ttl) {
 		return value.Value, true
 	} else {
 		return nil, false

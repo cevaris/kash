@@ -43,6 +43,28 @@ func TestMapCacheKeyLoader(t *testing.T) {
 	}
 }
 
+func TestNewMapCacheGetIfPresent(t *testing.T) {
+	testValue := 10
+	testKey := "test"
+	mapCache := NewMapCache()
+	mapCache.SetLoader(staticMapLoader(testValue))
+
+	if actual, exists := mapCache.Get(testKey); !exists || actual != testValue {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+	mapCache.Invalidate(testKey)
+
+	if actual, exists := mapCache.GetIfPresent(testKey); exists || actual != nil {
+		t.Error("not nil", actual, exists)
+	}
+
+	if actual, exists := mapCache.Get(testKey); !exists || actual != testValue {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+}
+
 func TestMapCacheInvalidate(t *testing.T) {
 	testMap := map[interface{}]interface{}{"a": 1, "b": 2}
 	mapCache := NewMapCache()
