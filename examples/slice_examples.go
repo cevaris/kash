@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func exampleStaticCache() {
+func sliceCacheStatic() {
 	fmt.Println("exampleStaticCache")
 	sliceCache := cache.NewSliceCache()
 	sliceCache.SetLoader(func() []*cache.Element {
@@ -30,7 +30,7 @@ func exampleStaticCache() {
 	fmt.Println("\n")
 }
 
-func exampleLoaderWithRefresh() {
+func sliceCacheWithRefresh() {
 	fmt.Println("exampleLoaderWithRefresh")
 	sliceCache := cache.NewSliceCache()
 	sliceCache.RefreshAfterWrite(100 * time.Millisecond)
@@ -56,6 +56,6 @@ func exampleLoaderWithRefresh() {
 }
 
 func main() {
-	exampleStaticCache()
-	exampleLoaderWithRefresh()
+	sliceCacheStatic()
+	sliceCacheWithRefresh()
 }

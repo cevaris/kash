@@ -3,6 +3,7 @@ package gache
 import (
 	"testing"
 	"reflect"
+	"fmt"
 )
 
 const TestCacheSize int = 10
@@ -101,4 +102,13 @@ func buildSliceLoaderIter(values [][]*Element) func() []*Element {
 		}
 		return nil
 	}
+}
+
+func dumpSlice(s []*Element) {
+	builder := make([]string, len(s))
+
+	for i, v := range s {
+		builder[i] = fmt.Sprintf("%+v, ", v)
+	}
+	println(fmt.Sprintf("%v", builder))
 }
