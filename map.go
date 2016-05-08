@@ -33,6 +33,16 @@ func (c *MapCache) Get(key interface{}) (interface{}, bool) {
 	return c.get(key, time.Now().UTC())
 }
 
+func (c *MapCache) Put(key interface{}, value interface{}) {
+	c.data[key] = newElement(value)
+}
+
+func (c *MapCache) PutAll(values map[interface{}]interface{}) {
+	for k, v := range values {
+		c.data[k] = newElement(v)
+	}
+}
+
 func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 	if value, exists := c.data[key]; exists && !value.Stale(now, c.ttl) {
 		return value.Value, true
@@ -50,14 +60,6 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 
 func (c *MapCache) RefreshAfterWrite(ttl time.Duration) {
 	c.ttl = ttl
-}
-
-func (c *MapCache) refreshKeys(now time.Time) {
-	for k, v := range c.data {
-		if v.CreatedAt.Before(now.Add(c.ttl)) {
-			c.sync(k)
-		}
-	}
 }
 
 func (c *MapCache) sync(key interface{}) {
