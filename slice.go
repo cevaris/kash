@@ -61,7 +61,7 @@ func (c *SliceCache) sync() {
 func (c *SliceCache) launchLoader() {
 	// should only launch once
 	go func() {
-		for range time.Tick(c.ttl) {
+		for _ = range time.Tick(c.ttl) {
 			c.sync()
 		}
 	}()
