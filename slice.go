@@ -2,6 +2,7 @@ package gache
 
 import (
 	"time"
+	"fmt"
 )
 
 type SliceCache struct {
@@ -33,9 +34,25 @@ func (c *SliceCache) RefreshAfterWrite(duration time.Duration) {
 
 func (c *SliceCache) Get() []*Element {
 	if c.data == nil {
+		fmt.Println("initializing cache")
 		c.sync()
 	}
 	return c.data
+}
+
+func (c *SliceCache) String() string {
+	builder := make([]string, len(c.data))
+
+	for i, v := range c.data {
+		builder[i] = fmt.Sprintf("%+v, ", v)
+	}
+
+	return fmt.Sprintf(
+		"SliceCache(%+v,%+v,%+v)",
+		builder,
+		c.loader,
+		c.duration,
+	)
 }
 
 func (c *SliceCache) sync() {
@@ -51,3 +68,11 @@ func (c *SliceCache) launchLoader() {
 	}()
 }
 
+func dumpSlice(s []*Element) {
+	builder := make([]string, len(s))
+
+	for i, v := range s {
+		builder[i] = fmt.Sprintf("%+v, ", v)
+	}
+	println(fmt.Sprintf("%v", builder))
+}

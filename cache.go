@@ -3,6 +3,7 @@ package gache
 import (
 	"time"
 	"math"
+	"fmt"
 )
 
 // Element example; https://golang.org/src/container/list/list_test.go
@@ -35,4 +36,12 @@ func NewKVPair(key interface{}, value interface{}) *KVPair {
 		Value: value,
 		CreatedAt: time.Now().UTC(),
 	}
+}
+
+func (e *Element) String() string {
+	return fmt.Sprintf("%+v %+v", e.Value, e.CreatedAt)
+}
+
+func (e1 *Element) Compare(e2 *Element) bool {
+	return e1.Value == e2.Value
 }
