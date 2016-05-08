@@ -2,7 +2,6 @@ package gache
 
 import (
 	"testing"
-	"time"
 	"reflect"
 )
 
@@ -11,65 +10,53 @@ const TestCacheSize int = 10
 type TestObject struct{}
 
 func TestNewSliceCache(t *testing.T) {
-	sliceCache := NewSliceCache(
-		buildSliceLoader(make([]*Element, TestCacheSize)),
-		time.Second,
-	)
-	sliceCache.sync()
+	sliceCache := NewSliceCache()
+	sliceCache.SetLoader(buildSliceLoader(make([]*Element, TestCacheSize)))
 
-	actualLen := len(sliceCache.data)
-	if len(sliceCache.data) != TestCacheSize {
+	actualLen := len(sliceCache.Get())
+	if len(sliceCache.Get()) != TestCacheSize {
 		t.Error("invalid default cache size", actualLen)
 	}
 }
 
 func TestNilSliceCacheLoader(t *testing.T) {
-	sliceCache := NewSliceCache(buildSliceLoader(nil), time.Second)
-	sliceCache.sync()
+	sliceCache := NewSliceCache()
+	sliceCache.SetLoader(buildSliceLoader(nil))
 
-	if sliceCache.data != nil {
+	if sliceCache.Get() != nil {
 		t.Error("cache not nil")
 	}
 }
 
 func TestSliceCacheInt(t *testing.T) {
 	testData := []*Element{NewElement(10), NewElement(100)}
-	sliceCache := NewSliceCache(
-		buildSliceLoader(testData),
-		time.Second,
-	)
-	sliceCache.sync()
+	sliceCache := NewSliceCache()
+	sliceCache.SetLoader(buildSliceLoader(testData))
 
-	actualLen := len(sliceCache.data)
-	if ! reflect.DeepEqual(sliceCache.data, testData) {
+	actualLen := len(sliceCache.Get())
+	if ! reflect.DeepEqual(sliceCache.Get(), testData) {
 		t.Error("invalid cache data", actualLen)
 	}
 }
 
 func TestSliceCacheString(t *testing.T) {
 	testData := []*Element{NewElement("alpha"), NewElement("bravo")}
-	sliceCache := NewSliceCache(
-		buildSliceLoader(testData),
-		time.Second,
-	)
-	sliceCache.sync()
+	sliceCache := NewSliceCache()
+	sliceCache.SetLoader(buildSliceLoader(testData))
 
-	actualLen := len(sliceCache.data)
-	if ! reflect.DeepEqual(sliceCache.data, testData) {
+	actualLen := len(sliceCache.Get())
+	if ! reflect.DeepEqual(sliceCache.Get(), testData) {
 		t.Error("invalid cache data", actualLen)
 	}
 }
 
 func TestSliceCacheGenericInterface(t *testing.T) {
 	testData := []*Element{NewElement(&TestObject{}), NewElement(&TestObject{})}
-	sliceCache := NewSliceCache(
-		buildSliceLoader(testData),
-		time.Second,
-	)
-	sliceCache.sync()
+	sliceCache := NewSliceCache()
+	sliceCache.SetLoader(buildSliceLoader(testData))
 
-	actualLen := len(sliceCache.data)
-	if ! reflect.DeepEqual(sliceCache.data, testData) {
+	actualLen := len(sliceCache.Get())
+	if ! reflect.DeepEqual(sliceCache.Get(), testData) {
 		t.Error("invalid cache data", actualLen)
 	}
 }
