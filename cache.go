@@ -13,35 +13,25 @@ const MaxDuration = time.Nanosecond * math.MaxInt64
 type Cache interface{}
 
 type element struct {
-	AccessedAt      time.Time
-	CreatedAt       time.Time
-	RefreshEligible bool
-	Value           interface{}
+	AccessedAt time.Time
+	CreatedAt  time.Time
+	Value      interface{}
 }
 
 func newElement(value interface{}) *element {
 	return &element{
 		AccessedAt: time.Now().UTC(),
 		CreatedAt: time.Now().UTC(),
-		RefreshEligible: false,
 		Value: value,
 	}
-}
-
-func (e *element) WriteStale(now time.Time, ttl time.Duration) bool {
-	return e.CreatedAt.Before(now.Add(-1 * ttl))
 }
 
 func (e *element) AccessStale(now time.Time, ttl time.Duration) bool {
 	return e.AccessedAt.Before(now.Add(-1 * ttl))
 }
 
-func (e *element) FlagToRefresh() {
-	e.RefreshEligible = true
-}
-
-func (e *element) ShouldRefresh() bool {
-	return e.RefreshEligible
+func (e *element) WriteStale(now time.Time, ttl time.Duration) bool {
+	return e.CreatedAt.Before(now.Add(-1 * ttl))
 }
 
 func (e *element) String() string {

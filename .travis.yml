@@ -8,5 +8,4 @@ go:
   - 1.5
 
 install:
-  - make
   - make test
