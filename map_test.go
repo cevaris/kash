@@ -30,13 +30,13 @@ func TestMapCacheKeyLoader(t *testing.T) {
 		t.Error("not nil", actual, exists)
 	}
 
-	mapCache.sync("test")
+	mapCache.Refresh("test")
 
 	if actual, exists := mapCache.Get("test"); !exists || actual != testValueA {
 		t.Error("invalid cache data", actual, exists)
 	}
 
-	mapCache.sync("test")
+	mapCache.Refresh("test")
 
 	if actual, exists := mapCache.Get("test"); !exists || actual != testValueB {
 		t.Error("invalid cache data", actual)

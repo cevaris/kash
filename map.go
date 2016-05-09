@@ -4,33 +4,44 @@ import (
 	"time"
 )
 
+/*
+ Cache Notes
+ - http://stackoverflow.com/questions/10153724/google-guavas-cacheloader-loadall-vs-reload-semantics
+  */
+
 type MapCache struct {
 	data                 map[interface{}]*element
 	intervalCacheRefresh time.Duration
-	loadFunc             func(interface{}) interface{}
+	loadFunc             func(key interface{}) interface{}
 	refreshInterval      time.Duration
-	refreshFunc          func(key interface{}, prev interface{}) interface{}
+	reloadFunc           func(key interface{}, prev interface{}) interface{}
 	ttlAccessed          time.Duration
 	ttlWrite             time.Duration
 }
 
 func NewMapCache() *MapCache {
-	nilSliceLoader := func(interface{}) interface{} {
+	nilLoadFunc := func(key interface{}) interface{} {
 		return nil
 	}
-
+	nilReloadFunc := func(key interface{}, prev interface{}) interface{} {
+		return nil
+	}
 	c := &MapCache{
 		data: make(map[interface{}]*element),
 		intervalCacheRefresh: MaxDuration,
+		loadFunc: nilLoadFunc,
 		ttlWrite: MaxDuration,
-		loadFunc: nilSliceLoader,
 		ttlAccessed: MaxDuration,
+		reloadFunc: nilReloadFunc,
 	}
 	return c
 }
 
-func (c *MapCache) SetLoader(keyLoader func(interface{}) interface{}) {
+func (c *MapCache) SetLoader(keyLoader func(key interface{}) interface{}) {
 	c.loadFunc = keyLoader
+	c.reloadFunc = func(key interface{}, prev interface{}) interface{} {
+		return keyLoader(key)
+	}
 }
 
 func (c *MapCache) Get(key interface{}) (interface{}, bool) {
@@ -78,7 +89,9 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 	}
 
 	// Cache miss or data older than ttl
-	c.sync(key)
+	if value := c.loadFunc(key); value != nil {
+		c.data[key] = newElement(value)
+	}
 
 	if value, exists := c.data[key]; exists {
 		defer c.updateAccessTime(key, now)
@@ -96,17 +109,10 @@ func (c *MapCache) getIfPresent(key interface{}, now time.Time) (interface{}, bo
 	}
 }
 
-//func (c *MapCache) launchCacheRefresher() {
-//	go func() {
-//		for range time.Tick(c.refreshInterval) {
-//			now := time.Now().UTC()
-//			c.refreshKeys(now)
-//		}
-//	}()
-//}
-
-func (c *MapCache) sync(key interface{}) {
-	if value := c.loadFunc(key); value != nil {
+func (c *MapCache) Refresh(key interface{}) {
+	if value, exists := c.data[key]; exists {
+		c.data[key] = newElement(c.reloadFunc(key, value))
+	} else if value := c.loadFunc(key); value != nil {
 		c.data[key] = newElement(value)
 	}
 }
