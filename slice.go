@@ -28,7 +28,7 @@ func (c *SliceCache) SetLoader(loader func() []interface{}) {
 	c.loader = loader
 }
 
-func (c *SliceCache) RefreshAfterWrite(duration time.Duration) {
+func (c *SliceCache) SetCacheTtl(duration time.Duration) {
 	c.ttl = duration
 }
 

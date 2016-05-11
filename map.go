@@ -2,17 +2,29 @@ package kash
 
 import (
 	"time"
+	"sync"
 )
 
 /*
  Cache Notes
  - http://stackoverflow.com/questions/10153724/google-guavas-cacheloader-loadall-vs-reload-semantics
+ - http://stackoverflow.com/questions/31983275/how-to-change-external-variables-value-inside-a-goroutine-closure
+ - http://google.github.io/guava/releases/snapshot/api/docs/com/google/common/cache/CacheBuilder.html
+ - http://google.github.io/guava/releases/snapshot/api/docs/com/google/common/cache/LoadingCache.html
+ - https://github.com/google/guava/wiki/CachesExplained
   */
+
+type KeyValue  struct {
+	Key   interface{}
+	Value interface{}
+}
 
 type MapCache struct {
 	data        map[interface{}]*element
 	loadFunc    func(key interface{}) interface{}
-	reloadFunc  func(key interface{}, prev interface{}) interface{}
+	lock        sync.RWMutex
+	reloadFunc  func(key interface{}, prev interface{})
+	ReloadChan  chan KeyValue
 	ttlAccessed time.Duration
 	ttlRefresh  time.Duration
 	ttlWrite    time.Duration
@@ -22,25 +34,30 @@ func NewMapCache() *MapCache {
 	nilLoadFunc := func(key interface{}) interface{} {
 		return nil
 	}
-	nilReloadFunc := func(key interface{}, prev interface{}) interface{} {
-		return nil
-	}
 	c := &MapCache{
 		data: make(map[interface{}]*element),
 		loadFunc: nilLoadFunc,
+		lock: sync.RWMutex{},
 		ttlWrite: MaxDuration,
 		ttlAccessed: MaxDuration,
 		ttlRefresh: MaxDuration,
-		reloadFunc: nilReloadFunc,
+		ReloadChan: make(chan KeyValue),
 	}
+
+	c.launchReloadListener()
+
+	c.SetReload(func(key interface{}, prev interface{}) {
+		c.ReloadChan <- KeyValue{Key: key, Value: c.loadFunc(key)}
+	})
 	return c
 }
 
-func (c *MapCache) SetLoader(keyLoader func(key interface{}) interface{}) {
-	c.loadFunc = keyLoader
-	c.reloadFunc = func(key interface{}, prev interface{}) interface{} {
-		return keyLoader(key)
-	}
+func (c *MapCache) SetLoad(loadFunc func(key interface{}) interface{}) {
+	c.loadFunc = loadFunc
+}
+
+func (c *MapCache) SetReload(reloadFunc func(key interface{}, prev interface{})) {
+	c.reloadFunc = reloadFunc
 }
 
 func (c *MapCache) Get(key interface{}) (interface{}, bool) {
@@ -61,7 +78,15 @@ func (c *MapCache) Put(key interface{}, value interface{}) {
 
 func (c *MapCache) PutAll(values map[interface{}]interface{}) {
 	for k, v := range values {
-		c.data[k] = newElement(v)
+		c.Put(k, v)
+	}
+}
+
+func (c *MapCache) Refresh(key interface{}) {
+	if elem, exists := c.data[key]; exists {
+		c.reloadFunc(key, elem.Value)
+	} else if value := c.loadFunc(key); value != nil {
+		c.Put(key, value)
 	}
 }
 
@@ -82,17 +107,17 @@ func (c *MapCache) Len() int {
 }
 
 func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
-	if value, exists := c.data[key]; exists {
+	if elem, exists := c.data[key]; exists {
 
-		if value.WriteStale(now, c.ttlRefresh) {
+		if elem.WriteStale(now, c.ttlRefresh) {
 			c.Refresh(key)
 		}
 
 		defer c.updateAccessTime(key, now)
-		return value.Value, true
+		return elem.Value, true
 
 	} else if value := c.loadFunc(key); value != nil {
-		c.data[key] = newElement(value)
+		c.Put(key, value)
 		return c.data[key].Value, true
 	} else {
 		return nil, false
@@ -100,24 +125,28 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 }
 
 func (c *MapCache) getIfPresent(key interface{}, now time.Time) (interface{}, bool) {
-	if value, exists := c.data[key]; exists && !value.WriteStale(now, c.ttlWrite) {
-		return value.Value, true
-	} else {
-		return nil, false
+	if elem, exists := c.data[key]; exists {
+		if !elem.WriteStale(now, c.ttlRefresh) {
+			return elem.Value, true
+		}
 	}
-}
-
-func (c *MapCache) Refresh(key interface{}) {
-	if value, exists := c.data[key]; exists {
-		c.data[key] = newElement(c.reloadFunc(key, value))
-	} else if value := c.loadFunc(key); value != nil {
-		c.data[key] = newElement(value)
-	}
+	return nil, false
 }
 
 func (c *MapCache) updateAccessTime(key interface{}, now time.Time) {
-	if value, exists := c.data[key]; exists {
-		value.AccessedAt = now
-		c.data[key] = value
+	if elem, exists := c.data[key]; exists {
+		elem.AccessedAt = now
+		c.data[key] = elem
 	}
+}
+
+func (c *MapCache) launchReloadListener() {
+	go func() {
+		for {
+			select {
+			case kv := <-c.ReloadChan:
+				c.Put(kv.Key, kv.Value)
+			}
+		}
+	}()
 }

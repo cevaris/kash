@@ -3,12 +3,13 @@ package kash
 import (
 	"testing"
 	"fmt"
+	"time"
 )
 
 func TestNewMapCache(t *testing.T) {
 	testValue := 10
 	mapCache := NewMapCache()
-	mapCache.SetLoader(staticMapLoader(testValue))
+	mapCache.SetLoad(staticMapLoader(testValue))
 	if actual, exists := mapCache.Get("test"); !exists || actual != testValue {
 		t.Error("invalid cache data", actual, exists)
 	}
@@ -18,7 +19,7 @@ func TestMapCacheKeyLoader(t *testing.T) {
 	testValueA := 10
 	testValueB := 20
 	mapCache := NewMapCache()
-	mapCache.SetLoader(mapKeyLoaderIter(
+	mapCache.SetLoad(mapKeyLoaderIter(
 		[]map[interface{}]interface{}{
 			map[interface{}]interface{}{},
 			map[interface{}]interface{}{"test": testValueA},
@@ -47,7 +48,7 @@ func TestNewMapCacheGetIfPresent(t *testing.T) {
 	testValue := 10
 	testKey := "test"
 	mapCache := NewMapCache()
-	mapCache.SetLoader(staticMapLoader(testValue))
+	mapCache.SetLoad(staticMapLoader(testValue))
 
 	if actual, exists := mapCache.Get(testKey); !exists || actual != testValue {
 		t.Error("invalid cache data", actual, exists)
@@ -123,6 +124,45 @@ func TestMapCachePutAll(t *testing.T) {
 	mapCache.PutAll(testMap)
 
 	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+}
+
+func TestMapCacheRefreshAfterWrite(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1}
+	mapCache := NewMapCache()
+	mapCache.RefreshAfterWrite(5 * time.Millisecond)
+	mapCache.SetLoad(func(key interface{}) interface{} {
+		someExternalSource := map[interface{}]interface{}{
+			"a": 1,
+		}
+		return someExternalSource[key]
+	})
+	mapCache.SetReload(func(key interface{}, prev interface{}) {
+		someExternalSource := map[interface{}]interface{}{
+			"a": time.Now().Unix(),
+		}
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			mapCache.ReloadChan <- KeyValue{Key: key, Value: someExternalSource[key]}
+		}()
+	})
+
+
+	// Cache.Load
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	// Cache.Reload (kicks of async job, returns old values)
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	// Cache.Reload (returns new async loaded returned values)
+	if actual, exists := mapCache.Get("a"); !exists || actual == testMap["a"] {
 		t.Error("invalid cache data", actual, exists)
 	}
 }

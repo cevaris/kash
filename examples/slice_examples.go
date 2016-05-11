@@ -33,7 +33,7 @@ func sliceCacheStatic() {
 func sliceCacheWithRefresh() {
 	fmt.Println("sliceCacheWithRefresh")
 	sliceCache := cache.NewSliceCache()
-	sliceCache.RefreshAfterWrite(100 * time.Millisecond)
+	sliceCache.SetCacheTtl(100 * time.Millisecond)
 	sliceCache.SetLoader(func() []interface{} {
 		return []interface{}{
 			time.Now().UTC(),
@@ -46,7 +46,7 @@ func sliceCacheWithRefresh() {
 		fmt.Println(i, e.(time.Time))
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(250 * time.Millisecond)
 
 	slice = sliceCache.Get()
 	for i, e := range slice {

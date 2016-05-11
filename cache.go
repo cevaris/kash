@@ -14,14 +14,14 @@ type Cache interface{}
 
 type element struct {
 	AccessedAt time.Time
-	CreatedAt  time.Time
+	WriteAt    time.Time
 	Value      interface{}
 }
 
 func newElement(value interface{}) *element {
 	return &element{
 		AccessedAt: time.Now().UTC(),
-		CreatedAt: time.Now().UTC(),
+		WriteAt: time.Now().UTC(),
 		Value: value,
 	}
 }
@@ -31,11 +31,11 @@ func (e *element) AccessStale(now time.Time, ttl time.Duration) bool {
 }
 
 func (e *element) WriteStale(now time.Time, ttl time.Duration) bool {
-	return e.CreatedAt.Before(now.Add(-1 * ttl))
+	return e.WriteAt.Before(now.Add(-1 * ttl))
 }
 
 func (e *element) String() string {
-	return fmt.Sprintf("%+v %+v", e.Value, e.CreatedAt)
+	return fmt.Sprintf("%+v %+v", e.Value, e.WriteAt)
 }
 
 func (e1 *element) Compare(e2 *element) bool {
