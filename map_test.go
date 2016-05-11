@@ -128,7 +128,7 @@ func TestMapCachePutAll(t *testing.T) {
 	}
 }
 
-func TestMapCacheRefreshAfterWrite(t *testing.T) {
+func TestMapCacheRefreshAfterWriteAsync(t *testing.T) {
 	testMap := map[interface{}]interface{}{"a": 1}
 	mapCache := NewMapCache()
 	mapCache.RefreshAfterWrite(5 * time.Millisecond)
@@ -138,7 +138,7 @@ func TestMapCacheRefreshAfterWrite(t *testing.T) {
 		}
 		return someExternalSource[key]
 	})
-	mapCache.SetReload(func(key interface{}, prev interface{}) {
+	mapCache.SetAsyncReload(func(key interface{}, prev interface{}) {
 		someExternalSource := map[interface{}]interface{}{
 			"a": time.Now().Unix(),
 		}
@@ -162,6 +162,37 @@ func TestMapCacheRefreshAfterWrite(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Cache.Reload (returns new async loaded returned values)
+	if actual, exists := mapCache.Get("a"); !exists || actual == testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+}
+
+func TestMapCacheRefreshAfterWriteBlocking(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1}
+	mapCache := NewMapCache()
+	mapCache.RefreshAfterWrite(1 * time.Millisecond)
+	mapCache.SetLoad(func(key interface{}) interface{} {
+		someExternalSource := map[interface{}]interface{}{
+			"a": 1,
+		}
+		return someExternalSource[key]
+	})
+	mapCache.SetReload(func(key interface{}, prev interface{}) interface{} {
+		someExternalSource := map[interface{}]interface{}{
+			"a": time.Now().Unix(),
+		}
+		time.Sleep(5 * time.Millisecond)
+		return someExternalSource[key]
+	})
+
+
+	// Cache.Load
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	// Cache.Reload (blocks and returns new value)
 	if actual, exists := mapCache.Get("a"); !exists || actual == testMap["a"] {
 		t.Error("invalid cache data", actual, exists)
 	}
@@ -191,7 +222,7 @@ func dumpMap(s map[interface{}]*element) {
 
 	var i = 0
 	for k, v := range s {
-		builder[i] = fmt.Sprintf("%+v:%+v, ", k, v)
+		builder[i] = fmt.Sprintf("%+v:%+v, ", k, v.Value)
 		i++
 	}
 	println(fmt.Sprintf("{%v}", builder))

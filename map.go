@@ -20,14 +20,15 @@ type KeyValue  struct {
 }
 
 type MapCache struct {
-	data        map[interface{}]*element
-	loadFunc    func(key interface{}) interface{}
-	lock        sync.RWMutex
-	reloadFunc  func(key interface{}, prev interface{})
-	ReloadChan  chan KeyValue
-	ttlAccessed time.Duration
-	ttlRefresh  time.Duration
-	ttlWrite    time.Duration
+	asyncReloadFunc func(key interface{}, prev interface{})
+	data            map[interface{}]*element
+	loadFunc        func(key interface{}) interface{}
+	lock            sync.RWMutex
+	reloadFunc      func(key interface{}, prev interface{}) interface{}
+	ReloadChan      chan KeyValue
+	ttlAccessed     time.Duration
+	ttlRefresh      time.Duration
+	ttlWrite        time.Duration
 }
 
 func NewMapCache() *MapCache {
@@ -46,9 +47,13 @@ func NewMapCache() *MapCache {
 
 	c.launchReloadListener()
 
-	c.SetReload(func(key interface{}, prev interface{}) {
-		c.ReloadChan <- KeyValue{Key: key, Value: c.loadFunc(key)}
+	c.SetReload(func(key interface{}, prev interface{}) interface{} {
+		return c.loadFunc(key)
 	})
+	//c.SetAsyncReload(func(key interface{}, prev interface{}) {
+	//	c.ReloadChan <- KeyValue{Key: key, Value: c.loadFunc(key)}
+	//})
+
 	return c
 }
 
@@ -56,8 +61,12 @@ func (c *MapCache) SetLoad(loadFunc func(key interface{}) interface{}) {
 	c.loadFunc = loadFunc
 }
 
-func (c *MapCache) SetReload(reloadFunc func(key interface{}, prev interface{})) {
+func (c *MapCache) SetReload(reloadFunc func(key interface{}, prev interface{}) interface{}) {
 	c.reloadFunc = reloadFunc
+}
+
+func (c *MapCache) SetAsyncReload(reloadAsyncFunc func(key interface{}, prev interface{})) {
+	c.asyncReloadFunc = reloadAsyncFunc
 }
 
 func (c *MapCache) Get(key interface{}) (interface{}, bool) {
@@ -74,6 +83,7 @@ func (c *MapCache) Invalidate(key interface{}) {
 
 func (c *MapCache) Put(key interface{}, value interface{}) {
 	c.data[key] = newElement(value)
+	log.Debug("putting", key, value)
 }
 
 func (c *MapCache) PutAll(values map[interface{}]interface{}) {
@@ -84,7 +94,13 @@ func (c *MapCache) PutAll(values map[interface{}]interface{}) {
 
 func (c *MapCache) Refresh(key interface{}) {
 	if elem, exists := c.data[key]; exists {
-		c.reloadFunc(key, elem.Value)
+		if c.asyncReloadFunc != nil {
+			log.Debug("async prev", key, elem.Value)
+			c.asyncReloadFunc(key, elem.Value)
+		} else {
+			log.Debug("blocking prev", key, elem.Value)
+			c.Put(key, c.reloadFunc(key, elem.Value))
+		}
 	} else if value := c.loadFunc(key); value != nil {
 		c.Put(key, value)
 	}
@@ -111,11 +127,16 @@ func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 
 		if elem.WriteStale(now, c.ttlRefresh) {
 			c.Refresh(key)
+
+			if elem2, exists2 := c.data[key]; exists2 {
+				return elem2.Value, true
+			} else {
+				return nil, false
+			}
 		}
 
 		defer c.updateAccessTime(key, now)
 		return elem.Value, true
-
 	} else if value := c.loadFunc(key); value != nil {
 		c.Put(key, value)
 		return c.data[key].Value, true
