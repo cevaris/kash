@@ -43,7 +43,7 @@ func mapCacheWithRefresh() {
 		}
 		return someExternalSource[key]
 	})
-	mapCache.SetReload(func(key interface{}, prev interface{}) {
+	mapCache.SetAsyncReload(func(key interface{}, prev interface{}) {
 		someExternalSource := map[interface{}]interface{}{
 			"keyA": time.Now().Unix(),
 		}
