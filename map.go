@@ -79,7 +79,9 @@ func (c *MapCache) Invalidate(key interface{}) {
 }
 
 func (c *MapCache) Put(key interface{}, value interface{}) {
-	c.data[key] = newElement(value)
+	if value != nil {
+		c.data[key] = newElement(value)
+	}
 }
 
 func (c *MapCache) PutAll(values map[interface{}]interface{}) {
@@ -119,8 +121,20 @@ func (c *MapCache) Len() int {
 func (c *MapCache) get(key interface{}, now time.Time) (interface{}, bool) {
 	if elem, exists := c.data[key]; exists {
 
+		if elem.AccessStale(now, c.ttlAccessed) {
+			c.Invalidate(key)
+			return nil, false
+		}
+
+		if elem.WriteStale(now, c.ttlWrite) {
+			c.Invalidate(key)
+			return nil, false
+		}
+
 		if elem.WriteStale(now, c.ttlRefresh) {
 			c.Refresh(key)
+
+			defer c.updateAccessTime(key, now)
 			return c.data[key].Value, true
 		}
 

@@ -113,6 +113,21 @@ func TestMapCachePut(t *testing.T) {
 	}
 }
 
+func TestMapCachePutNil(t *testing.T) {
+	testKey := "test"
+	mapCache := NewMapCache()
+
+	if actual, exists := mapCache.Get(testKey); exists || actual != nil {
+		t.Error("not nil", actual, exists)
+	}
+
+	mapCache.Put(testKey, nil)
+
+	if actual, exists := mapCache.Get(testKey); exists || actual != nil {
+		t.Error("not nil", actual, exists)
+	}
+}
+
 func TestMapCachePutAll(t *testing.T) {
 	testMap := map[interface{}]interface{}{"a": 1, "b": 2}
 	mapCache := NewMapCache()
@@ -194,6 +209,70 @@ func TestMapCacheRefreshAfterWriteBlocking(t *testing.T) {
 
 	// Cache.Reload (blocks and returns new value)
 	if actual, exists := mapCache.Get("a"); !exists || actual == testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+}
+
+func TestMapCacheExpireAfterAccess(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1}
+	mapCache := NewMapCache()
+	mapCache.ExpireAfterAccess(5 * time.Millisecond)
+	mapCache.PutAll(testMap)
+
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	if actual, exists := mapCache.Get("a"); exists {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+	mapCache.Put("a", testMap["a"])
+
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	if actual, exists := mapCache.Get("a"); exists {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+	mapCache.Put("a", testMap["a"])
+
+	// Keep cache and keeping "a" alive
+	for range [10]struct{}{} {
+		mapCache.Get("a")
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+}
+
+func TestMapCacheExpireAfterWrite(t *testing.T) {
+	testMap := map[interface{}]interface{}{"a": 1}
+	mapCache := NewMapCache()
+	mapCache.ExpireAfterWrite(1 * time.Millisecond)
+
+	mapCache.PutAll(testMap)
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(5 * time.Millisecond)
+	if actual, exists := mapCache.Get("a"); exists {
+		t.Error("invalid cache data", actual, exists)
+	}
+
+	mapCache.Put("a", testMap["a"])
+	if actual, exists := mapCache.Get("a"); !exists || actual != testMap["a"] {
+		t.Error("invalid cache data", actual, exists)
+	}
+	time.Sleep(5 * time.Millisecond)
+	if actual, exists := mapCache.Get("a"); exists {
 		t.Error("invalid cache data", actual, exists)
 	}
 }
