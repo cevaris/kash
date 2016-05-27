@@ -242,7 +242,7 @@ func TestMapCacheExpireAfterAccess(t *testing.T) {
 	mapCache.Put("a", testMap["a"])
 
 	// Keep cache and keeping "a" alive
-	for range [10]struct{}{} {
+	for _, _ = range [10]struct{}{} {
 		mapCache.Get("a")
 		time.Sleep(2 * time.Millisecond)
 	}
