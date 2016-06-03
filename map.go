@@ -23,12 +23,15 @@ type MapCache struct {
 	asyncReloadFunc func(key interface{}, prev interface{})
 	data            map[interface{}]*element
 	loadFunc        func(key interface{}) interface{}
-	lock            sync.RWMutex
+	sizePruneLock   sync.Mutex
 	reloadFunc      func(key interface{}, prev interface{}) interface{}
 	ReloadChan      chan KeyValue
 	ttlAccessed     time.Duration
 	ttlRefresh      time.Duration
 	ttlWrite        time.Duration
+	weigherFunc     func(key interface{}, value interface{}) int64
+	weightCurr      int64
+	weightMax       int64
 }
 
 func NewMapCache() *MapCache {
@@ -38,17 +41,22 @@ func NewMapCache() *MapCache {
 	c := &MapCache{
 		data: make(map[interface{}]*element),
 		loadFunc: nilLoadFunc,
-		lock: sync.RWMutex{},
+		sizePruneLock: sync.Mutex{},
 		ttlWrite: MaxDuration,
 		ttlAccessed: MaxDuration,
 		ttlRefresh: MaxDuration,
 		ReloadChan: make(chan KeyValue),
+		weightCurr: 0,
 	}
 
 	c.launchReloadListener()
 
 	c.SetReload(func(key interface{}, prev interface{}) interface{} {
 		return c.loadFunc(key)
+	})
+
+	c.SetWeigher(func(key interface{}, prev interface{}) int64 {
+		return 1
 	})
 
 	return c
@@ -66,6 +74,14 @@ func (c *MapCache) SetAsyncReload(reloadAsyncFunc func(key interface{}, prev int
 	c.asyncReloadFunc = reloadAsyncFunc
 }
 
+func (c *MapCache) SetWeigher(weigherFunc func(key interface{}, value interface{}) int64) {
+	c.weigherFunc = weigherFunc
+}
+
+func (c *MapCache) SetMaxWeight(weight int64) {
+	c.weightMax = weight
+}
+
 func (c *MapCache) Get(key interface{}) (interface{}, bool) {
 	return c.get(key, time.Now().UTC())
 }
@@ -80,7 +96,7 @@ func (c *MapCache) Invalidate(key interface{}) {
 
 func (c *MapCache) Put(key interface{}, value interface{}) {
 	if value != nil {
-		c.data[key] = newElement(value)
+		c.data[key] = newElementWithWeight(value, c.weigherFunc(key, value))
 	}
 }
 
@@ -157,12 +173,12 @@ func (c *MapCache) getIfPresent(key interface{}, now time.Time) (interface{}, bo
 	return nil, false
 }
 
-func (c *MapCache) updateAccessTime(key interface{}, now time.Time) {
-	if elem, exists := c.data[key]; exists {
-		elem.AccessedAt = now
-		c.data[key] = elem
+	func (c *MapCache) updateAccessTime(key interface{}, now time.Time) {
+		if elem, exists := c.data[key]; exists {
+			elem.AccessedAt = now
+			c.data[key] = elem
+		}
 	}
-}
 
 func (c *MapCache) launchReloadListener() {
 	go func() {

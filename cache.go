@@ -16,13 +16,19 @@ type element struct {
 	AccessedAt time.Time
 	WriteAt    time.Time
 	Value      interface{}
+	Weight     int64
 }
 
 func newElement(value interface{}) *element {
+	return newElementWithWeight(value, 1)
+}
+
+func newElementWithWeight(value interface{}, weight int64) *element {
 	return &element{
 		AccessedAt: time.Now().UTC(),
 		WriteAt: time.Now().UTC(),
 		Value: value,
+		Weight: weight,
 	}
 }
 
